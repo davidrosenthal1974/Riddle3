@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>משחק 3: וורדעל</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f8fafc;
+    color: #1e293b;
+    margin: 0;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 100vh;
+    touch-action: manipulation;
+  }
+  header { text-align: center; margin-top: 5px; }
+  h1 { margin: 0; font-size: 1.6rem; color: #0f172a; }
+  .subtitle { font-size: 0.95rem; color: #64748b; margin-top: 4px; }
+
+  #board-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-grow: 1;
+    margin: 15px 0;
+  }
+  .board {
+    display: grid;
+    grid-template-rows: repeat(6, 1fr);
+    grid-gap: 6px;
+    width: 270px;
+    height: 320px;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-gap: 6px;
+  }
+  .tile {
+    width: 100%;
+    height: 100%;
+    border: 2px solid #cbd5e1;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    font-weight: 700;
+    background: #ffffff;
+    user-select: none;
+    transition: transform 0.15s ease;
+  }
+  .tile.pop { transform: scale(1.1); border-color: #64748b; }
+
+  .tile.correct { background: #22c55e; border-color: #22c55e; color: #fff; }
+  .tile.present { background: #eab308; border-color: #eab308; color: #fff; }
+  .tile.absent { background: #64748b; border-color: #64748b; color: #fff; }
+
+  #keyboard {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .kb-row {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    touch-action: manipulation;
+  }
+  .key {
+    background: #e2e8f0;
+    color: #1e293b;
+    border: none;
+    border-radius: 6px;
+    height: 48px;
+    font-size: 1.15rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    cursor: pointer;
+    user-select: none;
+  }
+  .key:active { background: #cbd5e1; }
+  .key.large { flex: 1.5; font-size: 0.95rem; }
+  .key.correct { background: #22c55e; color: #fff; }
+  .key.present { background: #eab308; color: #fff; }
+  .key.absent { background: #64748b; color: #fff; }
+
+  #toast {
+    position: fixed;
+    top: 75px;
+    background: #0f172a;
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: none;
+    z-index: 100;
+    animation: fadeIn 0.2s ease;
+  }
+
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 200;
+  }
+  .modal-card {
+    background: white;
+    border-radius: 20px;
+    padding: 30px 24px;
+    text-align: center;
+    max-width: 380px;
+    width: 100%;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+    animation: popIn 0.3s ease;
+  }
+  .modal-card h2 { color: #22c55e; margin: 10px 0; font-size: 1.8rem; }
+  .modal-card p { font-size: 1.1rem; line-height: 1.6; color: #334155; }
+  .hidden { display: none !important; }
+
+  @keyframes popIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-6px); }
+    40%, 80% { transform: translateX(6px); }
+  }
+  .shake { animation: shake 0.4s ease; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>משחק 3: וורדעל 🟩🟨⬜</h1>
+  <div class="subtitle">מילה בת 5 אותיות • 6 ניסיונות</div>
+</header>
+
+<div id="toast"></div>
+
+<div id="board-container">
+  <div class="board" id="board"></div>
+</div>
+
+<div id="keyboard">
+  <div class="kb-row">
+    <button class="key" data-key="ק">ק</button>
+    <button class="key" data-key="ר">ר</button>
+    <button class="key" data-key="א">א</button>
+    <button class="key" data-key="ט">ט</button>
+    <button class="key" data-key="ו">ו</button>
+    <button class="key" data-key="ן">ן</button>
+    <button class="key" data-key="ם">ם</button>
+    <button class="key" data-key="פ">פ</button>
+  </div>
+  <div class="kb-row">
+    <button class="key" data-key="ש">ש</button>
+    <button class="key" data-key="ד">ד</button>
+    <button class="key" data-key="ג">ג</button>
+    <button class="key" data-key="כ">כ</button>
+    <button class="key" data-key="ע">ע</button>
+    <button class="key" data-key="י">י</button>
+    <button class="key" data-key="ח">ח</button>
+    <button class="key" data-key="ל">ל</button>
+    <button class="key" data-key="ך">ך</button>
+    <button class="key" data-key="ף">ף</button>
+  </div>
+  <div class="kb-row">
+    <button class="key large" data-key="ENTER">אישור</button>
+    <button class="key" data-key="ז">ז</button>
+    <button class="key" data-key="ס">ס</button>
+    <button class="key" data-key="ב">ב</button>
+    <button class="key" data-key="ה">ה</button>
+    <button class="key" data-key="נ">נ</button>
+    <button class="key" data-key="מ">מ</button>
+    <button class="key" data-key="צ">צ</button>
+    <button class="key" data-key="ת">ת</button>
+    <button class="key" data-key="ץ">ץ</button>
+    <button class="key large" data-key="BACKSPACE">⌫</button>
+  </div>
+</div>
+
+<div id="winModal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <div style="font-size: 3.2rem;">🚿 ✨ 🎁</div>
+    <h2>בול פגיעה! פתרת!</h2>
+    <p>
+      המילה הנכונה היא אכן <strong>מקלחת</strong>!<br><br>
+      הצלחת לפצח את הוורדעל כמו אלופה!<br><br>
+      גשי מיד ל<strong>דודאווי</strong> ודרשי לקבל את המתנה השלישית!
+    </p>
+  </div>
+</div>
+
+<script>
+  var TARGET_WORD = "מקלחת";
+  var currentRow = 0;
+  var currentCol = 0;
+  var currentGuess = "";
+  var gameOver = false;
+
+  var board = document.getElementById("board");
+  for (var r = 0; r < 6; r++) {
+    var rowEl = document.createElement("div");
+    rowEl.className = "row";
+    rowEl.id = "row-" + r;
+    for (var c = 0; c < 5; c++) {
+      var tileEl = document.createElement("div");
+      tileEl.className = "tile";
+      tileEl.id = "tile-" + r + "-" + c;
+      rowEl.appendChild(tileEl);
+    }
+    board.appendChild(rowEl);
+  }
+
+  function showToast(msg) {
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.style.display = "block";
+    setTimeout(function() { t.style.display = "none"; }, 1800);
+  }
+
+  function handleKeyPress(key) {
+    if (gameOver) return;
+
+    if (key === "BACKSPACE" || key === "DELETE") {
+      if (currentGuess.length > 0) {
+        currentGuess = currentGuess.slice(0, -1);
+        currentCol--;
+        var tile = document.getElementById("tile-" + currentRow + "-" + currentCol);
+        tile.textContent = "";
+        tile.classList.remove("pop");
+      }
+      return;
+    }
+
+    if (key === "ENTER") {
+      if (currentGuess.length < 5) {
+        showToast("צריך מילה בת 5 אותיות!");
+        var rEl = document.getElementById("row-" + currentRow);
+        rEl.classList.add("shake");
+        setTimeout(function() { rEl.classList.remove("shake"); }, 400);
+        return;
+      }
+      submitGuess();
+      return;
+    }
+
+    var hebRegex = /^[\u0590-\u05FF]$/;
+    if (hebRegex.test(key)) {
+      if (currentGuess.length < 5) {
+        var tile = document.getElementById("tile-" + currentRow + "-" + currentCol);
+        tile.textContent = key;
+        tile.classList.add("pop");
+        currentGuess += key;
+        currentCol++;
+      }
+    }
+  }
+
+  function normalizeLetter(l) {
+    if (l === 'ך') return 'כ';
+    if (l === 'ם') return 'מ';
+    if (l === 'ן') return 'נ';
+    if (l === 'ף') return 'פ';
+    if (l === 'ץ') return 'צ';
+    return l;
+  }
+
+  function submitGuess() {
+    var guessArr = currentGuess.split("");
+    var targetArr = TARGET_WORD.split("");
+
+    var statuses = ["absent", "absent", "absent", "absent", "absent"];
+    var targetLetterCounts = {};
+
+    for (var i = 0; i < 5; i++) {
+      var normTarget = normalizeLetter(targetArr[i]);
+      targetLetterCounts[normTarget] = (targetLetterCounts[normTarget] || 0) + 1;
+    }
+
+    // מעבר ראשון - ירוקים
+    for (var i = 0; i < 5; i++) {
+      var gNorm = normalizeLetter(guessArr[i]);
+      var tNorm = normalizeLetter(targetArr[i]);
+      if (gNorm === tNorm) {
+        statuses[i] = "correct";
+        targetLetterCounts[gNorm]--;
+      }
+    }
+
+    // מעבר שני - צהובים
+    for (var i = 0; i < 5; i++) {
+      if (statuses[i] !== "correct") {
+        var gNorm = normalizeLetter(guessArr[i]);
+        if (targetLetterCounts[gNorm] && targetLetterCounts[gNorm] > 0) {
+          statuses[i] = "present";
+          targetLetterCounts[gNorm]--;
+        }
+      }
+    }
+
+    // צביעת משבצות ומקלדת
+    for (var i = 0; i < 5; i++) {
+      var tile = document.getElementById("tile-" + currentRow + "-" + i);
+      var status = statuses[i];
+      tile.classList.add(status);
+
+      var keyChar = guessArr[i];
+      var keyBtn = document.querySelector('button[data-key="' + keyChar + '"]');
+      if (keyBtn) {
+        if (status === "correct") {
+          keyBtn.className = "key correct";
+        } else if (status === "present" && !keyBtn.classList.contains("correct")) {
+          keyBtn.className = "key present";
+        } else if (status === "absent" && !keyBtn.classList.contains("correct") && !keyBtn.classList.contains("present")) {
+          keyBtn.className = "key absent";
+        }
+      }
+    }
+
+    // ניצחון
+    if (statuses.every(function(s) { return s === "correct"; })) {
+      gameOver = true;
+      setTimeout(function() {
+        document.getElementById("winModal").classList.remove("hidden");
+      }, 500);
+      return;
+    }
+
+    currentRow++;
+    currentCol = 0;
+    currentGuess = "";
+
+    // סיום ניסיונות
+    if (currentRow === 6) {
+      gameOver = true;
+      showToast("נגמרו הניסיונות! המילה הייתה: מקלחת");
+    }
+  }
+
+  var keys = document.querySelectorAll(".key");
+  keys.forEach(function(btn) {
+    btn.addEventListener("click", function(e) {
+      e.preventDefault();
+      var keyVal = btn.getAttribute("data-key");
+      handleKeyPress(keyVal);
+    });
+  });
+
+  window.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+      handleKeyPress("ENTER");
+    } else if (e.key === "Backspace") {
+      handleKeyPress("BACKSPACE");
+    } else {
+      handleKeyPress(e.key);
+    }
+  });
+</script>
+</body>
+</html>
